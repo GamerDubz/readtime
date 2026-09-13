@@ -1,69 +1,185 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useState, useMemo, useCallback } from 'react'
+
+const STOP_WORDS = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','is','was','are','were','be','been','being','have','has','had','do','does','did','will','would','should','could','may','might','shall','this','that','these','those','i','you','he','she','it','we','they','me','him','her','us','them','my','your','his','its','our','their','from','not','all','as','if','by','so','up','out','about','into','than','then','when','what','who','how'])
+
+function countSyllables(word: string): number {
+  word = word.toLowerCase().replace(/[^a-z]/g, '')
+  if (!word) return 0
+  if (word.length <= 3) return 1
+  word = word.replace(/(?:[^laeiouy]|ed|[^laeiouy]e)$/, '').replace(/^y/, '')
+  const m = word.match(/[aeiouy]{1,2}/g)
+  return Math.max(1, m ? m.length : 1)
+}
+
+function analyze(text: string) {
+  if (!text.trim()) return null
+  const words = text.match(/\b\w+\b/g) ?? []
+  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 3)
+  const paragraphs = text.split(/\n\s*\n/).filter((p) => p.trim())
+  const wordCount = words.length
+  const charCount = text.length
+  const sentenceCount = Math.max(1, sentences.length)
+  const paragraphCount = Math.max(1, paragraphs.length)
+  const uniqueWords = new Set(words.map((w) => w.toLowerCase())).size
+  const totalSyllables = words.reduce((acc, w) => acc + countSyllables(w), 0)
+  const avgWordsPerSentence = wordCount / sentenceCount
+  const avgSyllablesPerWord = totalSyllables / Math.max(1, wordCount)
+
+  // Flesch Reading Ease
+  const fleschEase = 206.835 - 1.015 * avgWordsPerSentence - 84.6 * avgSyllablesPerWord
+  // Flesch-Kincaid Grade Level
+  const fkGrade = 0.39 * avgWordsPerSentence + 11.8 * avgSyllablesPerWord - 15.59
+  // Gunning Fog
+  const complexWords = words.filter((w) => countSyllables(w) >= 3).length
+  const gunningFog = 0.4 * (avgWordsPerSentence + 100 * (complexWords / wordCount))
+
+  const readingTimes = { slow: Math.ceil(wordCount / 150), avg: Math.ceil(wordCount / 238), fast: Math.ceil(wordCount / 350) }
+
+  // Word frequency
+  const freq: Record<string, number> = {}
+  words.forEach((w) => {
+    const lw = w.toLowerCase()
+    if (!STOP_WORDS.has(lw) && lw.length > 2) freq[lw] = (freq[lw] ?? 0) + 1
+  })
+  const topWords = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 10)
+
+  let easeLabel = 'Very Difficult'
+  if (fleschEase >= 90) easeLabel = 'Very Easy'
+  else if (fleschEase >= 70) easeLabel = 'Easy'
+  else if (fleschEase >= 60) easeLabel = 'Standard'
+  else if (fleschEase >= 50) easeLabel = 'Fairly Difficult'
+  else if (fleschEase >= 30) easeLabel = 'Difficult'
+
+  return { wordCount, charCount, sentenceCount, paragraphCount, uniqueWords, readingTimes, fleschEase: Math.min(100, Math.max(0, fleschEase)), fkGrade: Math.max(0, fkGrade), gunningFog: Math.max(0, gunningFog), easeLabel, topWords }
+}
+
+function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="bg-[#1a1a1a] border border-[#2e2e2e] rounded-xl p-4">
+      <div className="text-xs text-neutral-500 mb-1 uppercase tracking-wider">{label}</div>
+      <div className="text-2xl font-bold text-neutral-100 tabular-nums">{value}</div>
+      {sub && <div className="text-xs text-neutral-600 mt-0.5">{sub}</div>}
     </div>
-  );
+  )
+}
+
+const SAMPLES = [
+  { label: 'Simple paragraph', text: 'The cat sat on the mat. It was a sunny day outside. Birds were singing in the trees. The children played happily in the park nearby. Everything felt peaceful and calm.' },
+  { label: 'Technical writing', text: 'The implementation utilizes a recursive descent parser combined with a predictive lookahead mechanism to efficiently disambiguate syntactic constructs. Furthermore, the semantic analysis phase employs a sophisticated type inference algorithm, enabling polymorphic dispatch resolution at compile time.' },
+  { label: 'News article excerpt', text: 'Scientists have discovered a new species of deep-sea fish in the Pacific Ocean. The creature, found at depths exceeding 4,000 meters, possesses bioluminescent properties never before observed in marine biology. Researchers from three universities collaborated on the expedition.' },
+]
+
+export default function ReadTimePage() {
+  const [text, setText] = useState('')
+  const result = useMemo(() => analyze(text), [text])
+
+  const load = useCallback((sample: string) => setText(sample), [])
+
+  return (
+    <div className="min-h-screen bg-[#0f0f0f] text-neutral-100">
+      <div className="max-w-5xl mx-auto p-6 md:p-10">
+        <header className="mb-8">
+          <h1 className="text-2xl font-bold tracking-tight mb-1">ReadTime</h1>
+          <p className="text-sm text-neutral-500">Reading time estimator, readability scorer & text analyzer</p>
+        </header>
+
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Input */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-neutral-500" htmlFor="text-input">Text</label>
+              <div className="flex gap-2">
+                {SAMPLES.map((s) => (
+                  <button key={s.label} onClick={() => load(s.text)} className="text-xs px-2 py-1 bg-[#1a1a1a] border border-[#2e2e2e] hover:border-[#444] rounded text-neutral-500 hover:text-neutral-200 transition-colors">{s.label}</button>
+                ))}
+              </div>
+            </div>
+            <textarea
+              id="text-input"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Paste or type your text here…"
+              className="w-full h-80 bg-[#1a1a1a] border border-[#2e2e2e] rounded-xl p-4 text-sm text-neutral-200 resize-none outline-none focus:border-blue-500 leading-relaxed"
+              aria-label="Input text for analysis"
+            />
+            <div className="text-xs text-neutral-600 mt-1.5">{text.length} characters</div>
+          </div>
+
+          {/* Results */}
+          <div className="space-y-5">
+            {result ? (
+              <>
+                {/* Reading times */}
+                <div className="bg-[#1a1a1a] border border-[#2e2e2e] rounded-xl p-5">
+                  <h2 className="text-sm font-semibold text-neutral-300 mb-3">Reading Time</h2>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { speed: 'Slow', wpm: '150 WPM', mins: result.readingTimes.slow },
+                      { speed: 'Average', wpm: '238 WPM', mins: result.readingTimes.avg },
+                      { speed: 'Fast', wpm: '350 WPM', mins: result.readingTimes.fast },
+                    ].map(({ speed, wpm, mins }) => (
+                      <div key={speed} className="text-center p-3 bg-[#242424] rounded-lg">
+                        <div className="text-2xl font-bold tabular-nums text-blue-400">{mins}</div>
+                        <div className="text-xs text-neutral-400">min</div>
+                        <div className="text-xs text-neutral-600 mt-1">{speed}</div>
+                        <div className="text-xs text-neutral-700">{wpm}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Stats grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  <StatCard label="Words" value={result.wordCount.toLocaleString()} />
+                  <StatCard label="Sentences" value={result.sentenceCount.toLocaleString()} />
+                  <StatCard label="Paragraphs" value={result.paragraphCount.toLocaleString()} />
+                  <StatCard label="Unique Words" value={result.uniqueWords.toLocaleString()} sub={`${Math.round(result.uniqueWords / result.wordCount * 100)}% vocabulary diversity`} />
+                </div>
+
+                {/* Readability */}
+                <div className="bg-[#1a1a1a] border border-[#2e2e2e] rounded-xl p-5 space-y-3">
+                  <h2 className="text-sm font-semibold text-neutral-300">Readability</h2>
+                  {[
+                    { label: `Flesch Reading Ease — ${result.easeLabel}`, value: result.fleschEase, max: 100, color: result.fleschEase > 60 ? '#4ade80' : result.fleschEase > 40 ? '#fbbf24' : '#f87171', suffix: '/100' },
+                    { label: `Flesch-Kincaid Grade Level — Grade ${result.fkGrade.toFixed(1)}`, value: Math.min(result.fkGrade, 16), max: 16, color: '#60a5fa', suffix: '' },
+                    { label: `Gunning Fog Index — ${result.gunningFog.toFixed(1)}`, value: Math.min(result.gunningFog, 20), max: 20, color: '#a78bfa', suffix: '' },
+                  ].map(({ label, value, max, color, suffix }) => (
+                    <div key={label}>
+                      <div className="flex justify-between text-xs text-neutral-500 mb-1.5">
+                        <span>{label}</span>
+                        <span style={{ color }}>{value.toFixed(1)}{suffix}</span>
+                      </div>
+                      <div className="h-1.5 bg-[#2e2e2e] rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(value / max) * 100}%`, background: color }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Top words */}
+                {result.topWords.length > 0 && (
+                  <div className="bg-[#1a1a1a] border border-[#2e2e2e] rounded-xl p-5">
+                    <h2 className="text-sm font-semibold text-neutral-300 mb-3">Top Words</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {result.topWords.map(([word, count]) => (
+                        <span key={word} className="px-2.5 py-1 bg-[#242424] rounded-full text-xs text-neutral-300">
+                          {word} <span className="text-neutral-600">×{count}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full text-neutral-600 text-sm">
+                Enter some text to see analysis
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
