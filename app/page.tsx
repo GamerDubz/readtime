@@ -1,6 +1,9 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { X } from 'lucide-react'
+import { Logo } from '@/components/logo'
+import { ReadabilityMeter } from '@/components/readability-meter'
 
 const STOP_WORDS = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','is','was','are','were','be','been','being','have','has','had','do','does','did','will','would','should','could','may','might','shall','this','that','these','those','i','you','he','she','it','we','they','me','him','her','us','them','my','your','his','its','our','their','from','not','all','as','if','by','so','up','out','about','into','than','then','when','what','who','how'])
 
@@ -13,7 +16,21 @@ function countSyllables(word: string): number {
   return Math.max(1, m ? m.length : 1)
 }
 
-function analyze(text: string) {
+type Analysis = {
+  wordCount: number
+  charCount: number
+  sentenceCount: number
+  paragraphCount: number
+  uniqueWords: number
+  readingTimes: { slow: number; avg: number; fast: number }
+  fleschEase: number
+  fkGrade: number
+  gunningFog: number
+  easeLabel: string
+  topWords: [string, number][]
+}
+
+function analyze(text: string): Analysis | null {
   if (!text.trim()) return null
   const words = text.match(/\b\w+\b/g) ?? []
   const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 3)
@@ -27,23 +44,19 @@ function analyze(text: string) {
   const avgWordsPerSentence = wordCount / sentenceCount
   const avgSyllablesPerWord = totalSyllables / Math.max(1, wordCount)
 
-  // Flesch Reading Ease
   const fleschEase = 206.835 - 1.015 * avgWordsPerSentence - 84.6 * avgSyllablesPerWord
-  // Flesch-Kincaid Grade Level
   const fkGrade = 0.39 * avgWordsPerSentence + 11.8 * avgSyllablesPerWord - 15.59
-  // Gunning Fog
   const complexWords = words.filter((w) => countSyllables(w) >= 3).length
   const gunningFog = 0.4 * (avgWordsPerSentence + 100 * (complexWords / wordCount))
 
   const readingTimes = { slow: Math.ceil(wordCount / 150), avg: Math.ceil(wordCount / 238), fast: Math.ceil(wordCount / 350) }
 
-  // Word frequency
   const freq: Record<string, number> = {}
   words.forEach((w) => {
     const lw = w.toLowerCase()
     if (!STOP_WORDS.has(lw) && lw.length > 2) freq[lw] = (freq[lw] ?? 0) + 1
   })
-  const topWords = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 10)
+  const topWords = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 10) as [string, number][]
 
   let easeLabel = 'Very Difficult'
   if (fleschEase >= 90) easeLabel = 'Very Easy'
@@ -55,130 +68,191 @@ function analyze(text: string) {
   return { wordCount, charCount, sentenceCount, paragraphCount, uniqueWords, readingTimes, fleschEase: Math.min(100, Math.max(0, fleschEase)), fkGrade: Math.max(0, fkGrade), gunningFog: Math.max(0, gunningFog), easeLabel, topWords }
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div className="bg-[#1a1a1a] border border-[#2e2e2e] rounded-xl p-4">
-      <div className="text-xs text-neutral-500 mb-1 uppercase tracking-wider">{label}</div>
-      <div className="text-2xl font-bold text-neutral-100 tabular-nums">{value}</div>
-      {sub && <div className="text-xs text-neutral-600 mt-0.5">{sub}</div>}
-    </div>
-  )
-}
-
 const SAMPLES = [
   { label: 'Simple paragraph', text: 'The cat sat on the mat. It was a sunny day outside. Birds were singing in the trees. The children played happily in the park nearby. Everything felt peaceful and calm.' },
   { label: 'Technical writing', text: 'The implementation utilizes a recursive descent parser combined with a predictive lookahead mechanism to efficiently disambiguate syntactic constructs. Furthermore, the semantic analysis phase employs a sophisticated type inference algorithm, enabling polymorphic dispatch resolution at compile time.' },
-  { label: 'News article excerpt', text: 'Scientists have discovered a new species of deep-sea fish in the Pacific Ocean. The creature, found at depths exceeding 4,000 meters, possesses bioluminescent properties never before observed in marine biology. Researchers from three universities collaborated on the expedition.' },
+  { label: 'News excerpt', text: 'Scientists have discovered a new species of deep-sea fish in the Pacific Ocean. The creature, found at depths exceeding 4,000 meters, possesses bioluminescent properties never before observed in marine biology. Researchers from three universities collaborated on the expedition.' },
 ]
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-3 border-b border-(--color-rule) last:border-none">
+      <span className="text-sm text-(--color-ink-soft)">{label}</span>
+      <span className="text-right">
+        <span className="font-(family-name:--font-display) text-xl tabular-nums">{value}</span>
+        {sub && <span className="block text-xs text-(--color-ink-faint) mt-0.5">{sub}</span>}
+      </span>
+    </div>
+  )
+}
 
 export default function ReadTimePage() {
   const [text, setText] = useState('')
   const result = useMemo(() => analyze(text), [text])
 
   const load = useCallback((sample: string) => setText(sample), [])
+  const clear = useCallback(() => setText(''), [])
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-neutral-100">
-      <div className="max-w-5xl mx-auto p-6 md:p-10">
-        <header className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight mb-1">ReadTime</h1>
-          <p className="text-sm text-neutral-500">Reading time estimator, readability scorer & text analyzer</p>
+    <div className="min-h-screen">
+      <div className="mx-auto max-w-6xl px-6 py-10 md:px-10 md:py-14">
+        {/* Masthead */}
+        <header className="mb-10 md:mb-14">
+          <div className="flex items-center gap-3 text-(--color-ink)">
+            <Logo size={34} />
+            <span className="font-(family-name:--font-display) text-3xl md:text-4xl font-semibold tracking-tight">
+              ReadTime
+            </span>
+          </div>
+          <p className="mt-2 font-(family-name:--font-display) italic text-(--color-ink-soft) text-lg max-w-xl">
+            A quiet instrument for measuring how long a piece of writing takes to read.
+          </p>
+          <hr className="mt-6 border-t-2 border-(--color-ink)" />
         </header>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Input */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-neutral-500" htmlFor="text-input">Text</label>
-              <div className="flex gap-2">
-                {SAMPLES.map((s) => (
-                  <button key={s.label} onClick={() => load(s.text)} className="text-xs px-2 py-1 bg-[#1a1a1a] border border-[#2e2e2e] hover:border-[#444] rounded text-neutral-500 hover:text-neutral-200 transition-colors">{s.label}</button>
+        <main className="grid lg:grid-cols-[1.15fr_1fr] gap-12 lg:gap-16">
+          {/* The manuscript */}
+          <section aria-labelledby="manuscript-heading">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 mb-3">
+              <h2
+                id="manuscript-heading"
+                className="font-(family-name:--font-sans) text-xs font-semibold uppercase tracking-[0.14em] text-(--color-ink-soft)"
+              >
+                The Text
+              </h2>
+              <p className="font-(family-name:--font-sans) text-xs text-(--color-ink-faint)">
+                Try:{' '}
+                {SAMPLES.map((s, i) => (
+                  <span key={s.label}>
+                    <button
+                      type="button"
+                      onClick={() => load(s.text)}
+                      className="underline decoration-(--color-rule-strong) decoration-1 underline-offset-2 hover:text-(--color-accent) hover:decoration-(--color-accent) transition-colors min-h-11 inline-flex items-center py-1 -my-1"
+                    >
+                      {s.label}
+                    </button>
+                    {i < SAMPLES.length - 1 && <span aria-hidden="true"> · </span>}
+                  </span>
                 ))}
-              </div>
+              </p>
             </div>
-            <textarea
-              id="text-input"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Paste or type your text here…"
-              className="w-full h-80 bg-[#1a1a1a] border border-[#2e2e2e] rounded-xl p-4 text-sm text-neutral-200 resize-none outline-none focus:border-blue-500 leading-relaxed"
-              aria-label="Input text for analysis"
-            />
-            <div className="text-xs text-neutral-600 mt-1.5">{text.length} characters</div>
-          </div>
 
-          {/* Results */}
-          <div className="space-y-5">
+            <div className="relative bg-(--color-paper-raised) shadow-[0_1px_2px_rgba(42,33,24,0.08),0_8px_24px_-12px_rgba(42,33,24,0.25)] rounded-sm">
+              <textarea
+                id="text-input"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Paste or type your text here…"
+                className="manuscript w-full h-96 md:h-[30rem] bg-transparent p-6 pt-5 text-lg text-(--color-ink) resize-none outline-none font-(family-name:--font-serif) placeholder:not-italic"
+                aria-label="Text to analyze"
+              />
+              {text && (
+                <button
+                  type="button"
+                  onClick={clear}
+                  aria-label="Clear text"
+                  className="absolute top-2 right-2 flex items-center justify-center w-11 h-11 rounded-full text-(--color-ink-faint) hover:text-(--color-accent) hover:bg-(--color-paper) transition-colors"
+                >
+                  <X size={18} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+            <div className="mt-2 font-(family-name:--font-sans) text-xs text-(--color-ink-faint) tabular-nums">
+              {text.length.toLocaleString()} characters
+            </div>
+          </section>
+
+          {/* The reading */}
+          <section aria-label="Analysis results">
             {result ? (
-              <>
-                {/* Reading times */}
-                <div className="bg-[#1a1a1a] border border-[#2e2e2e] rounded-xl p-5">
-                  <h2 className="text-sm font-semibold text-neutral-300 mb-3">Reading Time</h2>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { speed: 'Slow', wpm: '150 WPM', mins: result.readingTimes.slow },
-                      { speed: 'Average', wpm: '238 WPM', mins: result.readingTimes.avg },
-                      { speed: 'Fast', wpm: '350 WPM', mins: result.readingTimes.fast },
-                    ].map(({ speed, wpm, mins }) => (
-                      <div key={speed} className="text-center p-3 bg-[#242424] rounded-lg">
-                        <div className="text-2xl font-bold tabular-nums text-blue-400">{mins}</div>
-                        <div className="text-xs text-neutral-400">min</div>
-                        <div className="text-xs text-neutral-600 mt-1">{speed}</div>
-                        <div className="text-xs text-neutral-700">{wpm}</div>
-                      </div>
-                    ))}
+              <div className="space-y-10">
+                {/* Pull-quote: reading time */}
+                <div className="border-y-2 border-(--color-ink) py-6 text-center">
+                  <div className="font-(family-name:--font-display) italic font-semibold text-(--color-accent) text-7xl md:text-8xl leading-none tabular-nums">
+                    {result.readingTimes.avg}
+                  </div>
+                  <div className="mt-2 font-(family-name:--font-sans) text-xs font-semibold uppercase tracking-[0.2em] text-(--color-ink-soft)">
+                    Minutes to Read
+                  </div>
+                  <div className="mt-4 font-(family-name:--font-sans) text-xs text-(--color-ink-faint)">
+                    a careful reader takes {result.readingTimes.slow} min · a quick one takes {result.readingTimes.fast} min
                   </div>
                 </div>
 
-                {/* Stats grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  <StatCard label="Words" value={result.wordCount.toLocaleString()} />
-                  <StatCard label="Sentences" value={result.sentenceCount.toLocaleString()} />
-                  <StatCard label="Paragraphs" value={result.paragraphCount.toLocaleString()} />
-                  <StatCard label="Unique Words" value={result.uniqueWords.toLocaleString()} sub={`${Math.round(result.uniqueWords / result.wordCount * 100)}% vocabulary diversity`} />
+                {/* Colophon stats */}
+                <div>
+                  <h2 className="font-(family-name:--font-sans) text-xs font-semibold uppercase tracking-[0.14em] text-(--color-ink-soft) mb-1">
+                    At a Glance
+                  </h2>
+                  <div>
+                    <Stat label="Words" value={result.wordCount.toLocaleString()} />
+                    <Stat label="Sentences" value={result.sentenceCount.toLocaleString()} />
+                    <Stat label="Paragraphs" value={result.paragraphCount.toLocaleString()} />
+                    <Stat
+                      label="Unique words"
+                      value={result.uniqueWords.toLocaleString()}
+                      sub={`${Math.round((result.uniqueWords / result.wordCount) * 100)}% vocabulary diversity`}
+                    />
+                  </div>
                 </div>
 
                 {/* Readability */}
-                <div className="bg-[#1a1a1a] border border-[#2e2e2e] rounded-xl p-5 space-y-3">
-                  <h2 className="text-sm font-semibold text-neutral-300">Readability</h2>
-                  {[
-                    { label: `Flesch Reading Ease — ${result.easeLabel}`, value: result.fleschEase, max: 100, color: result.fleschEase > 60 ? '#4ade80' : result.fleschEase > 40 ? '#fbbf24' : '#f87171', suffix: '/100' },
-                    { label: `Flesch-Kincaid Grade Level — Grade ${result.fkGrade.toFixed(1)}`, value: Math.min(result.fkGrade, 16), max: 16, color: '#60a5fa', suffix: '' },
-                    { label: `Gunning Fog Index — ${result.gunningFog.toFixed(1)}`, value: Math.min(result.gunningFog, 20), max: 20, color: '#a78bfa', suffix: '' },
-                  ].map(({ label, value, max, color, suffix }) => (
-                    <div key={label}>
-                      <div className="flex justify-between text-xs text-neutral-500 mb-1.5">
-                        <span>{label}</span>
-                        <span style={{ color }}>{value.toFixed(1)}{suffix}</span>
-                      </div>
-                      <div className="h-1.5 bg-[#2e2e2e] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(value / max) * 100}%`, background: color }} />
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <h2 className="font-(family-name:--font-sans) text-xs font-semibold uppercase tracking-[0.14em] text-(--color-ink-soft) mb-4">
+                    Readability
+                  </h2>
+                  <div className="space-y-5">
+                    <ReadabilityMeter
+                      label={`Flesch Reading Ease — ${result.easeLabel}`}
+                      value={result.fleschEase}
+                      max={100}
+                      displayValue={`${result.fleschEase.toFixed(1)}/100`}
+                    />
+                    <ReadabilityMeter
+                      label="Flesch-Kincaid Grade Level"
+                      value={Math.min(result.fkGrade, 16)}
+                      max={16}
+                      displayValue={`Grade ${result.fkGrade.toFixed(1)}`}
+                    />
+                    <ReadabilityMeter
+                      label="Gunning Fog Index"
+                      value={Math.min(result.gunningFog, 20)}
+                      max={20}
+                      displayValue={result.gunningFog.toFixed(1)}
+                    />
+                  </div>
                 </div>
 
-                {/* Top words */}
+                {/* Word index */}
                 {result.topWords.length > 0 && (
-                  <div className="bg-[#1a1a1a] border border-[#2e2e2e] rounded-xl p-5">
-                    <h2 className="text-sm font-semibold text-neutral-300 mb-3">Top Words</h2>
-                    <div className="flex flex-wrap gap-2">
+                  <div>
+                    <h2 className="font-(family-name:--font-sans) text-xs font-semibold uppercase tracking-[0.14em] text-(--color-ink-soft) mb-3">
+                      Index of Frequent Words
+                    </h2>
+                    <ul className="grid sm:grid-cols-2 gap-x-6">
                       {result.topWords.map(([word, count]) => (
-                        <span key={word} className="px-2.5 py-1 bg-[#242424] rounded-full text-xs text-neutral-300">
-                          {word} <span className="text-neutral-600">×{count}</span>
-                        </span>
+                        <li key={word} className="flex items-baseline py-1 font-(family-name:--font-serif) text-(--color-ink)">
+                          <span>{word}</span>
+                          <span className="index-leader" aria-hidden="true" />
+                          <span className="text-sm text-(--color-ink-soft) tabular-nums">{count}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
-              </>
+              </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-neutral-600 text-sm">
-                Enter some text to see analysis
+              <div className="h-full min-h-[24rem] flex items-center justify-center border-y-2 border-(--color-ink)/20">
+                <p className="font-(family-name:--font-display) italic text-(--color-ink-faint) text-xl text-center max-w-xs px-6">
+                  &ldquo;Begin, and the rest will follow.&rdquo;
+                  <span className="block mt-3 font-(family-name:--font-sans) not-italic text-xs uppercase tracking-[0.14em]">
+                    Paste text to see its reading time
+                  </span>
+                </p>
               </div>
             )}
-          </div>
-        </div>
+          </section>
+        </main>
       </div>
     </div>
   )

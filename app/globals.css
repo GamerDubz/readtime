@@ -1,2 +1,80 @@
 @import "tailwindcss";
-* { box-sizing: border-box; }
+
+@theme inline {
+  --font-display: var(--font-fraunces);
+  --font-serif: var(--font-source-serif);
+  --font-sans: var(--font-plex-sans);
+
+  --color-paper: #f3ead9;
+  --color-paper-raised: #faf6ec;
+  --color-ink: #2a2118;
+  --color-ink-soft: #5c5142;
+  --color-ink-faint: #8a7d6a;
+  --color-rule: #d6c6a8;
+  --color-rule-strong: #b9a684;
+  --color-accent: #7a2430;
+  --color-accent-soft: #9c4451;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-serif), Georgia, serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Manuscript textarea: faint ruled lines that scroll with the text. */
+.manuscript {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 31px,
+    var(--color-rule) 31px,
+    var(--color-rule) 32px
+  );
+  background-attachment: local;
+  line-height: 32px;
+}
+
+.manuscript::placeholder {
+  color: var(--color-ink-faint);
+  font-style: italic;
+}
+
+/* Index-style word list with dot leaders, like a book index. */
+.index-leader {
+  flex: 1 1 auto;
+  border-bottom: 1px dotted var(--color-rule-strong);
+  margin: 0 0.5em 0.3em;
+  min-width: 1rem;
+}
+
+@media print {
+  .no-print {
+    display: none;
+  }
+}
