@@ -5,6 +5,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'ReadTime — Reading Time Estimator & Text Analyzer',
   description: 'Analyze text readability, estimate reading time, and get word statistics with Flesch-Kincaid scoring.',
+  icons: {
+    icon: '/favicon.svg',
+  },
 }
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
