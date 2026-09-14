@@ -78,38 +78,11 @@ export default function ReadTimePage() {
   const load = useCallback((sample: string) => setText(sample), [])
 
   return (
-    <div className="min-h-screen bg-[#0A0E1A] text-slate-100 selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-[#0f0f0f] text-neutral-100">
       <div className="max-w-5xl mx-auto p-6 md:p-10">
-        <header className="mb-8 flex items-center justify-between pb-5 border-b border-slate-800">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-500 p-0.5 shadow-lg shadow-emerald-500/20 flex items-center justify-center">
-              <svg className="w-full h-full p-1.5" viewBox="0 0 32 32" fill="none">
-                <path d="M7 21C9.5 20 13 20 16 22C19 20 22.5 20 25 21V10C22.5 9 19 9 16 11C13 9 9.5 9 7 10V21Z" fill="#0F172A" stroke="#94A3B8" strokeWidth="1.2"/>
-                <line x1="16" y1="11" x2="16" y2="22" stroke="#38BDF8" strokeWidth="1.2"/>
-                <circle cx="23" cy="9" r="5.5" fill="#064E3B" stroke="#34D399" strokeWidth="1.5"/>
-                <path d="M23 6.5V9L24.5 10.5" stroke="#F0FDF4" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                ReadTime
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-medium">
-                  Analyzer
-                </span>
-              </h1>
-              <p className="text-xs text-slate-400">Reading time estimator, readability scorer &amp; text analyzer</p>
-            </div>
-          </div>
-          {result && (
-            <div className="hidden sm:flex items-center gap-2 text-xs">
-              <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-emerald-400 font-semibold font-mono">
-                {result.wordCount} Words
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-semibold">
-                {result.easeLabel}
-              </span>
-            </div>
-          )}
+        <header className="mb-8">
+          <h1 className="text-2xl font-bold tracking-tight mb-1">ReadTime</h1>
+          <p className="text-sm text-neutral-500">Reading time estimator, readability scorer & text analyzer</p>
         </header>
 
         <div className="grid lg:grid-cols-2 gap-8">
