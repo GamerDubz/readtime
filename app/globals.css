@@ -56,6 +56,10 @@ body {
     var(--color-rule) 31px,
     var(--color-rule) 32px
   );
+  /* Padding-box origin puts (0,0) before the padding, so the pattern is
+     shifted down by the element's own padding-top to land each rule under
+     the line box it belongs to instead of drifting from the text. */
+  background-position-y: 1.5rem;
   background-attachment: local;
   line-height: 32px;
 }

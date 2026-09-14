@@ -143,7 +143,7 @@ export default function ReadTimePage() {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Paste or type your text here…"
-                className="manuscript w-full h-96 md:h-[30rem] bg-transparent p-6 pt-5 text-lg text-(--color-ink) resize-none outline-none font-(family-name:--font-serif) placeholder:not-italic"
+                className="manuscript w-full h-96 md:h-[30rem] bg-transparent p-6 text-lg text-(--color-ink) resize-none outline-none font-(family-name:--font-serif) placeholder:not-italic"
                 aria-label="Text to analyze"
               />
               {text && (
